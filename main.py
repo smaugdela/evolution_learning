@@ -2,7 +2,7 @@ import pygame
 from icecream import ic
 from argparse import ArgumentParser
 
-from cart_balancing import CartBalancer, Action
+from cart_balancing import CartBalancer
 
 
 def interactive_mode():
@@ -12,7 +12,7 @@ def interactive_mode():
     # ic(pygame.font.get_fonts())
 
     # Set up the display
-    framerate = 0
+    framerate = 60
     width, height = 800, 600
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((width, height))
@@ -23,6 +23,7 @@ def interactive_mode():
 
     # Main loop
     running = True
+    simulation_duration = 0.0
     while running:
 
         ### Handle events
@@ -42,6 +43,7 @@ def interactive_mode():
         ### Update the simulation
         delta_t = clock.tick(framerate) / 1000.0  # Convert milliseconds to seconds
         simulation.step(actions, delta_t)
+        simulation_duration += delta_t
 
         # Render the simulation
         simulation.render(screen)
@@ -66,7 +68,7 @@ def interactive_mode():
         screen.blit(score_text, (10, 50))
 
         # Print simulation duration on screen
-        duration_text = font.render(f"Duration: {simulation.simulation_duration:.2f}s", True, (0, 0, 0))
+        duration_text = font.render(f"Duration: {simulation_duration:.2f}s", True, (0, 0, 0))
         screen.blit(duration_text, (10, 80))
 
         # Update the display

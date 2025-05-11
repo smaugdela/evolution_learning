@@ -7,7 +7,7 @@ import math
 import pygame
 from icecream import ic
 
-from classes.simulation import Simulation
+from base_classes.simulation import Simulation
 
 
 class Action(Enum):
@@ -48,7 +48,6 @@ class CartBalancer(Simulation):
         self._score = 0
         self.left_bound_collision = False
         self.right_bound_collision = False
-        self.simulation_duration = 0
 
         self.reset()
 
@@ -79,8 +78,6 @@ class CartBalancer(Simulation):
         :param delta_t: Time step for the simulation.
         :return: None
         """
-
-        self.simulation_duration += delta_t
 
         force = 0
         if Action.LEFT in actions and self.left_bound_collision is False:
