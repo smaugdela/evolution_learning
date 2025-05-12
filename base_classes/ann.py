@@ -66,7 +66,7 @@ class ANN:
 
         ### NEW CODE ###
         self._initialize_weights_and_ranks()
-        self._apply_constraints_and_pruning(0.5)
+        self._apply_constraints_and_pruning()
         self._check_io_connectivity()
         self._check_hidden_connectivity()
         ### END NEW CODE ###
@@ -90,8 +90,8 @@ class ANN:
 
     def _generate_significant_random_weight(self):
         """Generates a random weight, avoiding zero and ensuring some magnitude."""
-        # Generates value in [-1.0, -0.1] or [0.1, 1.0]
-        val = (random.random() * 0.9) + 0.1 
+        # Generates value in [-1.0, -0.01] or [0.01, 1.0]
+        val = (random.random() * 0.99) + 0.01 
         sign = random.choice([-1, 1])
         return sign * val
 
@@ -429,6 +429,53 @@ class ANN:
                 surface.blit(bias_text, bias_rect)
 
     ### MUTATIONS METHODS ###
+
+    def mutate(self):
+        """
+        Mutates the ANN by adding a hidden neuron or modifying weights.
+        """
+        add_proba = 0.1
+        remove_proba = 0.1
+        modify_proba = 0.8
+        mutation_type = random.choices(
+            ["add_hidden_neuron", "remove_hidden_neuron", "modify_parameter"],
+            weights=[add_proba, remove_proba, modify_proba],
+            k=1
+        )[0]
+        if mutation_type == "add_hidden_neuron":
+            self.add_hidden_neuron()
+        elif mutation_type == "remove_hidden_neuron":
+            self.remove_hidden_neuron()
+        elif mutation_type == "modify_parameter":
+            self.modify_parameter()
+
+
+    def modify_parameter(self):
+        """
+        Modifies a random parameter (weight or bias) of the ANN.
+        """
+        # Randomly choose to modify a weight or a bias
+        if random.random() < 0.5:
+            # Modify a weight, but no output child nor input parent
+            while True:
+                # Choose a random child and parent
+                child_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.output_indexes])
+                parent_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.input_indexes])
+                if child_idx == parent_idx:
+                    # Avoid self-loops
+                    continue
+                if self.synapses_weights[child_idx, parent_idx] == 0:
+                    # Ensure a valid connection
+                    continue
+                break
+            # Modify the weight
+            self.synapses_weights[child_idx, parent_idx] = self._generate_significant_random_weight()
+        else:
+            # Modify a bias
+            idx = random.choice([idx for idx in range(self.dimension) if idx not in self.input_indexes])
+            self.neurons_biases[idx] = self._generate_significant_random_weight()
+
+
     def add_hidden_neuron(self, split_connection_prob=0.3):
         """
         Adds a new hidden neuron to the network.

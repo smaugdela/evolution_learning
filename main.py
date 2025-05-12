@@ -1,14 +1,17 @@
+import os
 import pygame
-from icecream import ic
 from argparse import ArgumentParser
+from icecream import ic
 
-from cart_balancing import CartBalancer
+from base_classes.simulation import Simulation
+from cart_balancing import CartBalancer, Action
+from evolution_logic import fit_evolutionary_model
 
 
-def interactive_mode():
+def interactive_mode(simulation: Simulation):
+
     # Initialize Pygame
     pygame.init()
-
     # ic(pygame.font.get_fonts())
 
     # Set up the display
@@ -17,9 +20,6 @@ def interactive_mode():
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("Cart Balancing Simulation")
-
-    # Create the simulation
-    simulation = CartBalancer()
 
     # Main loop
     running = True
@@ -77,8 +77,37 @@ def interactive_mode():
     pygame.quit()
 
 
-def training_mode():
-    pass
+def training_mode(simulation: Simulation):
+    """
+    Run the simulation in training mode.
+    """
+    # Set up the simulation parameters
+    framerate = 60
+    simulation_duration = 10.0  # seconds
+    input_size = len(simulation.state())  # Number of state variables
+    output_size = len(Action)  # Number of actions
+
+    # Run the evolutionary model
+    top_individuals = fit_evolutionary_model(
+        simulation,
+        input_size=input_size,
+        output_size=output_size,
+        framerate=framerate,
+        simulation_duration=simulation_duration,
+        population_size=10,
+        num_generations=5,
+        selection_rate=0.5,
+        mutation_rate=0.1,
+        return_top_n=1,
+    )
+
+    # Save the top individual locally
+    os.makedirs("top_models", exist_ok=True)
+    for ann, score in top_individuals:
+        ann.save_model(f"top_models/best_model_{score:.0f}.pkl")
+
+    print("Top individuals saved.")
+
 
 def main():
     parser = ArgumentParser(description="Cart Balancing Simulation")
@@ -89,10 +118,13 @@ def main():
     )
     args = parser.parse_args()
 
+    # Create the simulation
+    simulation = CartBalancer()
+
     if args.interactive:
-        interactive_mode()
+        interactive_mode(simulation)
     else:
-        training_mode()
+        training_mode(simulation)
 
 
 
