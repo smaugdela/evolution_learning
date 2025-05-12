@@ -1,14 +1,17 @@
 import os
+from typing import Optional
+import numpy as np
 import pygame
 from argparse import ArgumentParser
 from icecream import ic
 
 from base_classes.simulation import Simulation
 from cart_balancing import CartBalancer, Action
+from base_classes.ann import ANN
 from evolution_logic import fit_evolutionary_model
 
 
-def interactive_mode(simulation: Simulation):
+def interactive_mode(simulation: Simulation, model: Optional[ANN] = None):
 
     # Initialize Pygame
     pygame.init()
@@ -37,8 +40,25 @@ def interactive_mode(simulation: Simulation):
                 if event.key == pygame.K_ESCAPE:
                     running = False
                     break
-    
+
         actions = simulation.events_mapping(events)
+
+        ### Handle model
+        if model:
+            # Get the state of the simulation
+            normalized_state = simulation.state(normalized=True)
+            # Get the action from the model
+            outputs = model.compute_outputs(np.array(normalized_state))
+            # Convert the action to a valid action
+            model_action = Action(outputs.argmax())
+
+            actions = [*actions, model_action]
+            # actions.append(model_action)
+
+            # ic(outputs)
+        #     ic(model_action.name)
+
+        # ic(actions)
 
         ### Update the simulation
         delta_t = clock.tick(framerate) / 1000.0  # Convert milliseconds to seconds
@@ -71,6 +91,11 @@ def interactive_mode(simulation: Simulation):
         duration_text = font.render(f"Duration: {simulation_duration:.2f}s", True, (0, 0, 0))
         screen.blit(duration_text, (10, 80))
 
+        # Print model action on screen
+        if model:
+            model_action_text = font.render(f"Model Action: {model_action.name}", True, (0, 0, 0))
+            screen.blit(model_action_text, (10, 120))
+
         # Update the display
         pygame.display.flip()
 
@@ -94,8 +119,8 @@ def training_mode(simulation: Simulation):
         output_size=output_size,
         framerate=framerate,
         simulation_duration=simulation_duration,
-        population_size=10,
-        num_generations=5,
+        population_size=100,
+        num_generations=100,
         selection_rate=0.5,
         mutation_rate=0.1,
         return_top_n=1,
@@ -116,17 +141,26 @@ def main():
         action="store_true",
         help="Run the simulation in interactive mode.",
     )
+    parser.add_argument(
+        "--model_file",
+        type=str,
+        help="Path to the model file to load for interactive mode.",
+    )
     args = parser.parse_args()
 
     # Create the simulation
     simulation = CartBalancer()
 
     if args.interactive:
-        interactive_mode(simulation)
+        # Load the model for interactive mode
+        model = None
+        if args.model_file:
+            model = ANN.load_model(args.model_file)
+        else:
+            print("No model specified for interactive mode, only human interaction will be possible.")
+        interactive_mode(simulation, model)
     else:
         training_mode(simulation)
-
-
 
 if __name__ == "__main__":
     main()

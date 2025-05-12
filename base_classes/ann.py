@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 import numpy as np
 from pathlib import Path
 import pickle
@@ -20,7 +21,7 @@ class ANN:
             output_size,
             activation_function=relu,
             random_hidden_neurons=False,
-            max_random_hidden_neurons=10,
+            max_random_hidden_neurons=20,
             fixed_hidden_neurons=3,
         ):
 
@@ -260,8 +261,7 @@ class ANN:
             return self.neurons_values[index]
 
         if index in recursion_check_set:
-            raise RecursionError(f"Cycle detected during computation involving neuron {index}. Graph may not be a DAG.")
-
+            raise RecursionError(f"Cycle detected during computation involving neuron {index}. Graph may not be a DAG for {self}.")
         recursion_check_set.add(index)
 
         parents_indexes = np.where(self.synapses_weights[index, :] != 0)[0]
@@ -286,10 +286,15 @@ class ANN:
 
         return output
 
-    def render_ann_on_surface(self, surface: pygame.Surface, neuron_radius=20, layer_spacing=150, show_weights=False, show_bias=False):
+    def render_ann_on_surface(self, surface: Optional[pygame.Surface] = None, neuron_radius=20, layer_spacing=150, show_weights=False, show_bias=False):
         """
         Renders a graphical representation of the ANN on a given Pygame surface.
         """
+
+        if not surface:
+            pygame.init()
+            surface = pygame.display.set_mode((800, 600))
+
         surface.fill((255, 255, 255)) # White background
 
         O_indices, I_indices, H_indices = self._get_neuron_types_and_indices()
@@ -431,23 +436,24 @@ class ANN:
     ### MUTATIONS METHODS ###
 
     def mutate(self):
-        """
-        Mutates the ANN by adding a hidden neuron or modifying weights.
-        """
-        add_proba = 0.1
-        remove_proba = 0.1
-        modify_proba = 0.8
-        mutation_type = random.choices(
-            ["add_hidden_neuron", "remove_hidden_neuron", "modify_parameter"],
-            weights=[add_proba, remove_proba, modify_proba],
-            k=1
-        )[0]
-        if mutation_type == "add_hidden_neuron":
-            self.add_hidden_neuron()
-        elif mutation_type == "remove_hidden_neuron":
-            self.remove_hidden_neuron()
-        elif mutation_type == "modify_parameter":
-            self.modify_parameter()
+        # """
+        # Mutates the ANN by adding a hidden neuron or modifying weights.
+        # """
+        # add_proba = 0.1
+        # remove_proba = 0.1
+        # modify_proba = 0.8
+        # mutation_type = random.choices(
+        #     ["add_hidden_neuron", "remove_hidden_neuron", "modify_parameter"],
+        #     weights=[add_proba, remove_proba, modify_proba],
+        #     k=1
+        # )[0]
+        # if mutation_type == "add_hidden_neuron":
+        #     self.add_hidden_neuron()
+        # elif mutation_type == "remove_hidden_neuron":
+        #     self.remove_hidden_neuron()
+        # elif mutation_type == "modify_parameter":
+        #     self.modify_parameter()
+        self.modify_parameter()
 
 
     def modify_parameter(self):
@@ -459,21 +465,26 @@ class ANN:
             # Modify a weight, but no output child nor input parent
             while True:
                 # Choose a random child and parent
-                child_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.output_indexes])
-                parent_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.input_indexes])
+                child_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.input_indexes])
+                parent_idx = random.choice([idx for idx in range(self.dimension) if idx not in self.output_indexes])
+                if not child_idx or not parent_idx:
+                    # No choice possible
+                    return
                 if child_idx == parent_idx:
                     # Avoid self-loops
                     continue
-                if self.synapses_weights[child_idx, parent_idx] == 0:
-                    # Ensure a valid connection
+                if self.synapses_weights[child_idx, parent_idx] == 0.0 or self.synapses_weights[parent_idx, child_idx] != 0.0: 
+                    # No connection or reverse connection
                     continue
                 break
             # Modify the weight
             self.synapses_weights[child_idx, parent_idx] = self._generate_significant_random_weight()
+            # print(f"Modified weight of {self} from {parent_idx} to {child_idx}: {self.synapses_weights[child_idx, parent_idx]}")
         else:
             # Modify a bias
             idx = random.choice([idx for idx in range(self.dimension) if idx not in self.input_indexes])
             self.neurons_biases[idx] = self._generate_significant_random_weight()
+            # print(f"Modified bias of {self} for neuron {idx}: {self.neurons_biases[idx]}")
 
 
     def add_hidden_neuron(self, split_connection_prob=0.3):
@@ -482,189 +493,191 @@ class ANN:
         With probability `split_connection_prob`, it tries to split an existing connection.
         Otherwise, it connects the new neuron to random valid parent/child neurons.
         """
-        O_indices, I_indices, H_indices = self._get_neuron_types_and_indices()
+        raise NotImplementedError("add_hidden_neuron is not implemented yet.")
+        # O_indices, I_indices, H_indices = self._get_neuron_types_and_indices()
         
-        new_neuron_idx = self.dimension
-        self.dimension += 1
+        # new_neuron_idx = self.dimension
+        # self.dimension += 1
         
-        new_biases = np.zeros(self.dimension)
-        new_biases[:-1] = self.neurons_biases
-        new_biases[new_neuron_idx] = (random.random() * 2 - 1) * 0.01 # Near-zero bias initially
-        self.neurons_biases = new_biases
+        # new_biases = np.zeros(self.dimension)
+        # new_biases[:-1] = self.neurons_biases
+        # new_biases[new_neuron_idx] = (random.random() * 2 - 1) * 0.01 # Near-zero bias initially
+        # self.neurons_biases = new_biases
 
-        old_weights = self.synapses_weights
-        self.synapses_weights = np.zeros((self.dimension, self.dimension))
-        if old_weights.size > 0: # Handle case where network was previously empty
-            self.synapses_weights[:-1, :-1] = old_weights
+        # old_weights = self.synapses_weights
+        # self.synapses_weights = np.zeros((self.dimension, self.dimension))
+        # if old_weights.size > 0: # Handle case where network was previously empty
+        #     self.synapses_weights[:-1, :-1] = old_weights
         
-        # Assign a rank to the new neuron.
-        # Try to insert it "between" existing ranks to facilitate splitting or connecting.
-        max_rank = -1
-        if self.neuron_rank:
-            max_rank = max(self.neuron_rank.values()) if self.neuron_rank else -1
+        # # Assign a rank to the new neuron.
+        # # Try to insert it "between" existing ranks to facilitate splitting or connecting.
+        # max_rank = -1
+        # if self.neuron_rank:
+        #     max_rank = max(self.neuron_rank.values()) if self.neuron_rank else -1
         
-        # For splitting, rank needs to be between a parent and child.
-        # For general add, rank can be `max_rank + 1` or strategically placed.
-        # For now, let's assign a high rank initially. If splitting, this will be adjusted.
-        self.neuron_rank[new_neuron_idx] = max_rank + 1
+        # # For splitting, rank needs to be between a parent and child.
+        # # For general add, rank can be `max_rank + 1` or strategically placed.
+        # # For now, let's assign a high rank initially. If splitting, this will be adjusted.
+        # self.neuron_rank[new_neuron_idx] = max_rank + 1
 
-        connection_made = False
-        if random.random() < split_connection_prob:
-            # Try to split an existing connection: P -> C becomes P -> new_H -> C
-            candidate_connections = []
-            for r_child_idx in range(new_neuron_idx): # Iterate over old dimension
-                for r_parent_idx in range(new_neuron_idx):
-                    if self.synapses_weights[r_child_idx, r_parent_idx] != 0:
-                        # Ensure parent is not an output and child is not an input
-                        parent_is_output = r_parent_idx in self.output_indexes
-                        child_is_input = r_child_idx in self.input_indexes
-                        if not parent_is_output and not child_is_input:
-                             candidate_connections.append((r_parent_idx, r_child_idx))
+        # connection_made = False
+        # if random.random() < split_connection_prob:
+        #     # Try to split an existing connection: P -> C becomes P -> new_H -> C
+        #     candidate_connections = []
+        #     for r_child_idx in range(new_neuron_idx): # Iterate over old dimension
+        #         for r_parent_idx in range(new_neuron_idx):
+        #             if self.synapses_weights[r_child_idx, r_parent_idx] != 0:
+        #                 # Ensure parent is not an output and child is not an input
+        #                 parent_is_output = r_parent_idx in self.output_indexes
+        #                 child_is_input = r_child_idx in self.input_indexes
+        #                 if not parent_is_output and not child_is_input:
+        #                      candidate_connections.append((r_parent_idx, r_child_idx))
             
-            if candidate_connections:
-                p_idx, c_idx = random.choice(candidate_connections)
-                original_weight = self.synapses_weights[c_idx, p_idx]
+        #     if candidate_connections:
+        #         p_idx, c_idx = random.choice(candidate_connections)
+        #         original_weight = self.synapses_weights[c_idx, p_idx]
                 
-                # Adjust rank of new_neuron_idx to be between p_idx and c_idx
-                # This is the tricky part to do without breaking other DAG constraints.
-                # A simpler rank assignment for splitting:
-                # If rank[p] < rank[c], try to set rank[new] = (rank[p] + rank[c]) / 2
-                # This might create non-integer ranks or require re-normalization of all ranks.
-                # For now, we'll use the simpler high rank and hope it works, or fallback.
-                # A robust splitting would re-evaluate ranks more globally.
+        #         # Adjust rank of new_neuron_idx to be between p_idx and c_idx
+        #         # This is the tricky part to do without breaking other DAG constraints.
+        #         # A simpler rank assignment for splitting:
+        #         # If rank[p] < rank[c], try to set rank[new] = (rank[p] + rank[c]) / 2
+        #         # This might create non-integer ranks or require re-normalization of all ranks.
+        #         # For now, we'll use the simpler high rank and hope it works, or fallback.
+        #         # A robust splitting would re-evaluate ranks more globally.
                 
-                # Set rank to be just after parent, if possible before child
-                self.neuron_rank[new_neuron_idx] = self.neuron_rank.get(p_idx, -1) + 0.5 # Temp non-integer for sorting
+        #         # Set rank to be just after parent, if possible before child
+        #         self.neuron_rank[new_neuron_idx] = self.neuron_rank.get(p_idx, -1) + 0.5 # Temp non-integer for sorting
                 
-                # Re-normalize ranks to be integers again
-                sorted_neurons_by_temp_rank = sorted(self.neuron_rank.keys(), key=lambda k: self.neuron_rank[k])
-                self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(sorted_neurons_by_temp_rank)}
+        #         # Re-normalize ranks to be integers again
+        #         sorted_neurons_by_temp_rank = sorted(self.neuron_rank.keys(), key=lambda k: self.neuron_rank[k])
+        #         self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(sorted_neurons_by_temp_rank)}
 
-                if self.neuron_rank[p_idx] < self.neuron_rank[new_neuron_idx] and \
-                   self.neuron_rank[new_neuron_idx] < self.neuron_rank[c_idx]:
+        #         if self.neuron_rank[p_idx] < self.neuron_rank[new_neuron_idx] and \
+        #            self.neuron_rank[new_neuron_idx] < self.neuron_rank[c_idx]:
                     
-                    self.synapses_weights[c_idx, p_idx] = 0 # Remove old connection
-                    self.synapses_weights[new_neuron_idx, p_idx] = 1.0 # P -> new_H
-                    self.synapses_weights[c_idx, new_neuron_idx] = original_weight # new_H -> C
-                    self.neurons_biases[new_neuron_idx] = 0.0 # Often set to 0 when splitting
-                    print(f"Added hidden neuron {new_neuron_idx} by splitting connection {p_idx}->{c_idx}.")
-                    connection_made = True
-                else:
-                    # Failed to place rank correctly for splitting, revert rank change and fall back
-                    neuron_order = list(range(self.dimension)) # Re-shuffle all ranks
-                    random.shuffle(neuron_order)
-                    self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(neuron_order)}
+        #             self.synapses_weights[c_idx, p_idx] = 0 # Remove old connection
+        #             self.synapses_weights[new_neuron_idx, p_idx] = 1.0 # P -> new_H
+        #             self.synapses_weights[c_idx, new_neuron_idx] = original_weight # new_H -> C
+        #             self.neurons_biases[new_neuron_idx] = 0.0 # Often set to 0 when splitting
+        #             # print(f"Added hidden neuron {new_neuron_idx} by splitting connection {p_idx}->{c_idx}.")
+        #             connection_made = True
+        #         else:
+        #             # Failed to place rank correctly for splitting, revert rank change and fall back
+        #             neuron_order = list(range(self.dimension)) # Re-shuffle all ranks
+        #             random.shuffle(neuron_order)
+        #             self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(neuron_order)}
 
 
-        if not connection_made: # Fallback or general add
-            # Assign a generic high rank if splitting failed or wasn't attempted
-            max_r = max(self.neuron_rank.values()) if self.neuron_rank else -1
-            self.neuron_rank[new_neuron_idx] = max_r +1 # Ensure it's the highest rank
+        # if not connection_made: # Fallback or general add
+        #     # Assign a generic high rank if splitting failed or wasn't attempted
+        #     max_r = max(self.neuron_rank.values()) if self.neuron_rank else -1
+        #     self.neuron_rank[new_neuron_idx] = max_r +1 # Ensure it's the highest rank
             
-            # Connect to one random valid parent
-            potential_parents = [
-                p_idx for p_idx in I_indices + H_indices 
-                if self.neuron_rank.get(p_idx, float('-inf')) < self.neuron_rank[new_neuron_idx]
-            ]
-            if potential_parents:
-                chosen_parent = random.choice(potential_parents)
-                self.synapses_weights[new_neuron_idx, chosen_parent] = self._generate_significant_random_weight()
+        #     # Connect to one random valid parent
+        #     potential_parents = [
+        #         p_idx for p_idx in I_indices + H_indices 
+        #         if self.neuron_rank.get(p_idx, float('-inf')) < self.neuron_rank[new_neuron_idx]
+        #     ]
+        #     if potential_parents:
+        #         chosen_parent = random.choice(potential_parents)
+        #         self.synapses_weights[new_neuron_idx, chosen_parent] = self._generate_significant_random_weight()
 
-            # Connect to one random valid child
-            potential_children = [
-                c_idx for c_idx in O_indices + H_indices 
-                if self.neuron_rank[new_neuron_idx] < self.neuron_rank.get(c_idx, float('inf'))
-            ]
-            if potential_children:
-                chosen_child = random.choice(potential_children)
-                self.synapses_weights[chosen_child, new_neuron_idx] = self._generate_significant_random_weight()
-            print(f"Added hidden neuron {new_neuron_idx} with general connections. New dimension: {self.dimension}")
+        #     # Connect to one random valid child
+        #     potential_children = [
+        #         c_idx for c_idx in O_indices + H_indices 
+        #         if self.neuron_rank[new_neuron_idx] < self.neuron_rank.get(c_idx, float('inf'))
+        #     ]
+        #     if potential_children:
+        #         chosen_child = random.choice(potential_children)
+        #         self.synapses_weights[chosen_child, new_neuron_idx] = self._generate_significant_random_weight()
+        #     # print(f"Added hidden neuron {new_neuron_idx} with general connections. New dimension: {self.dimension}")
 
-        self.neurons_values = np.empty(self.dimension) 
-        self.computed_neurons.clear()
-        # After adding, connectivity might need re-validation for the whole network.
+        # self.neurons_values = np.empty(self.dimension) 
+        # self.computed_neurons.clear()
+        # # After adding, connectivity might need re-validation for the whole network.
 
     def remove_hidden_neuron(self, neuron_to_remove_idx=None):
         """Removes a hidden neuron. If no index is provided, a random one is chosen."""
-        O_indices, I_indices, H_indices = self._get_neuron_types_and_indices()
+        raise NotImplementedError("remove_hidden_neuron is not implemented yet.")
+        # O_indices, I_indices, H_indices = self._get_neuron_types_and_indices()
 
-        if not H_indices:
-            # print("No hidden neurons to remove.")
-            return False # Indicate failure or no action
+        # if not H_indices:
+        #     # print("No hidden neurons to remove.")
+        #     return False # Indicate failure or no action
 
-        if neuron_to_remove_idx is None:
-            neuron_to_remove_idx = random.choice(H_indices)
-        elif neuron_to_remove_idx not in H_indices:
-            # print(f"Neuron {neuron_to_remove_idx} is not a hidden neuron or does not exist.")
-            return False
+        # if neuron_to_remove_idx is None:
+        #     neuron_to_remove_idx = random.choice(H_indices)
+        # elif neuron_to_remove_idx not in H_indices:
+        #     # print(f"Neuron {neuron_to_remove_idx} is not a hidden neuron or does not exist.")
+        #     return False
 
-        # print(f"Removing hidden neuron {neuron_to_remove_idx}...")
+        # # print(f"Removing hidden neuron {neuron_to_remove_idx}...")
         
-        new_dim = self.dimension - 1
-        if new_dim == 0 : # Cannot remove if it leads to an empty network this way
-            # print("Cannot remove neuron, would result in empty network.")
-            return False
+        # new_dim = self.dimension - 1
+        # if new_dim == 0 : # Cannot remove if it leads to an empty network this way
+        #     # print("Cannot remove neuron, would result in empty network.")
+        #     return False
 
-        new_biases = np.zeros(new_dim)
-        new_weights = np.zeros((new_dim, new_dim))
-        new_neuron_rank = {}
+        # new_biases = np.zeros(new_dim)
+        # new_weights = np.zeros((new_dim, new_dim))
+        # new_neuron_rank = {}
         
-        new_input_indexes = []
-        new_output_indexes = []
+        # new_input_indexes = []
+        # new_output_indexes = []
 
-        current_new_idx = 0
-        old_to_new_map = {}
+        # current_new_idx = 0
+        # old_to_new_map = {}
 
-        for old_idx in range(self.dimension):
-            if old_idx == neuron_to_remove_idx:
-                continue 
+        # for old_idx in range(self.dimension):
+        #     if old_idx == neuron_to_remove_idx:
+        #         continue 
             
-            old_to_new_map[old_idx] = current_new_idx
-            new_biases[current_new_idx] = self.neurons_biases[old_idx]
-            if old_idx in self.neuron_rank:
-                 new_neuron_rank[current_new_idx] = self.neuron_rank[old_idx] 
-            
-            if old_idx in self.input_indexes: new_input_indexes.append(current_new_idx)
-            if old_idx in self.output_indexes: new_output_indexes.append(current_new_idx)
-            current_new_idx += 1
-        
-        for old_r_child_idx in range(self.dimension):
-            if old_r_child_idx == neuron_to_remove_idx: continue
-            new_r_child_idx = old_to_new_map[old_r_child_idx]
-            for old_r_parent_idx in range(self.dimension):
-                if old_r_parent_idx == neuron_to_remove_idx: continue
-                new_r_parent_idx = old_to_new_map[old_r_parent_idx]
-                new_weights[new_r_child_idx, new_r_parent_idx] = \
-                    self.synapses_weights[old_r_child_idx, old_r_parent_idx]
+        #     old_to_new_map[old_idx] = current_new_idx
+        #     new_biases[current_new_idx] = self.neurons_biases[old_idx]
+        #     if old_idx in self.neuron_rank:
+        #          new_neuron_rank[current_new_idx] = self.neuron_rank[old_idx] 
 
-        self.dimension = new_dim
-        self.neurons_biases = new_biases
-        self.synapses_weights = new_weights
-        
-        # Re-normalize ranks to be contiguous from 0 to N-1
-        if new_neuron_rank:
-            sorted_new_neurons_by_old_rank_val = sorted(new_neuron_rank.keys(), key=lambda k: new_neuron_rank[k])
-            self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(sorted_new_neurons_by_old_rank_val)}
-        else:
-            self.neuron_rank = {}
+        #     if old_idx in self.input_indexes: new_input_indexes.append(current_new_idx)
+        #     if old_idx in self.output_indexes: new_output_indexes.append(current_new_idx)
+        #     current_new_idx += 1
 
-        self.input_indexes = np.array(new_input_indexes)
-        self.output_indexes = np.array(new_output_indexes)
+        # for old_r_child_idx in range(self.dimension):
+        #     if old_r_child_idx == neuron_to_remove_idx: continue
+        #     new_r_child_idx = old_to_new_map[old_r_child_idx]
+        #     for old_r_parent_idx in range(self.dimension):
+        #         if old_r_parent_idx == neuron_to_remove_idx: continue
+        #         new_r_parent_idx = old_to_new_map[old_r_parent_idx]
+        #         new_weights[new_r_child_idx, new_r_parent_idx] = \
+        #             self.synapses_weights[old_r_child_idx, old_r_parent_idx]
 
-        self.neurons_values = np.empty(self.dimension)
-        self.computed_neurons.clear()
-        # print(f"Removed hidden neuron. New dimension: {self.dimension}")
+        # self.dimension = new_dim
+        # self.neurons_biases = new_biases
+        # self.synapses_weights = new_weights
 
-        # After removal, it's highly recommended to re-check all connectivity constraints
-        # and potentially re-run parts of _apply_constraints_and_pruning or the full init retry logic
-        # if this mutation is part of an evolutionary algorithm.
-        # For now, we just perform the structural removal.
-        if self.dimension > 0 and (not self._check_io_connectivity() or not self._check_hidden_connectivity()):
-             # print("Warning: Connectivity may be compromised after neuron removal. Re-validation needed.")
-             # One could try to "heal" the network here.
-             # For now, this function returns True if structural removal was done.
-             pass
-        return True # Indicate success of removal operation
+        # # Re-normalize ranks to be contiguous from 0 to N-1
+        # if new_neuron_rank:
+        #     sorted_new_neurons_by_old_rank_val = sorted(new_neuron_rank.keys(), key=lambda k: new_neuron_rank[k])
+        #     self.neuron_rank = {neuron_idx: i for i, neuron_idx in enumerate(sorted_new_neurons_by_old_rank_val)}
+        # else:
+        #     self.neuron_rank = {}
+
+        # self.input_indexes = np.array(new_input_indexes)
+        # self.output_indexes = np.array(new_output_indexes)
+
+        # self.neurons_values = np.empty(self.dimension)
+        # self.computed_neurons.clear()
+        # # print(f"Removed hidden neuron. New dimension: {self.dimension}")
+
+        # # After removal, it's highly recommended to re-check all connectivity constraints
+        # # and potentially re-run parts of _apply_constraints_and_pruning or the full init retry logic
+        # # if this mutation is part of an evolutionary algorithm.
+        # # For now, we just perform the structural removal.
+        # if self.dimension > 0 and (not self._check_io_connectivity() or not self._check_hidden_connectivity()):
+        #      # print("Warning: Connectivity may be compromised after neuron removal. Re-validation needed.")
+        #      # One could try to "heal" the network here.
+        #      # For now, this function returns True if structural removal was done.
+        #      pass
+        # return True # Indicate success of removal operation
 
     def breed(self, other_ann: 'ANN'):
         """
@@ -679,9 +692,24 @@ class ANN:
         new_biases = (self.neurons_biases + other_ann.neurons_biases) / 2
         new_weights = (self.synapses_weights + other_ann.synapses_weights) / 2
 
+        # Ensure the new weights are valid by nullifying non-allowed connections
+        new_weights = np.where(
+            (self.synapses_weights != 0), # & (other_ann.synapses_weights != 0),
+            new_weights,
+            0
+        )
+
         child = ANN(input_size=len(self.input_indexes), output_size=len(self.output_indexes))
+
+        # print(f"Breeding {self} with {other_ann} to create {child}.")
+
         child.neurons_biases = new_biases
         child.synapses_weights = new_weights
+        child.dimension = self.dimension
+
+        child._check_io_connectivity()
+        child._check_hidden_connectivity()
+
         return child
 
 
@@ -713,7 +741,7 @@ def run_visualization(ann_instance: ANN):
 
         ann_instance.render_ann_on_surface(screen, neuron_radius=25, layer_spacing=200, show_weights=True)
         pygame.display.flip()
-        clock.tick(30) # Limit FPS
+        clock.tick(10) # Limit FPS
 
     pygame.quit()
 
