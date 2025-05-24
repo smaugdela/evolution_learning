@@ -10,12 +10,14 @@ from icecream import ic
 from base_classes.simulation import Simulation
 
 
-class Action(Enum):
-    LEFT = 0
-    RIGHT = 1
 
 
 class CartBalancer(Simulation):
+
+    class Action(Enum):
+        NONE = 0
+        LEFT = 1
+        RIGHT = 2
 
     # Simulation constants
     gravity = 9.81  # Acceleration due to gravity (m/s^2)
@@ -60,14 +62,14 @@ class CartBalancer(Simulation):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    self.actions.append(Action.LEFT)
+                    self.actions.append(CartBalancer.Action.LEFT)
                 elif event.key == pygame.K_RIGHT:
-                    self.actions.append(Action.RIGHT)
+                    self.actions.append(CartBalancer.Action.RIGHT)
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
-                    self.actions.remove(Action.LEFT)
+                    self.actions.remove(CartBalancer.Action.LEFT)
                 elif event.key == pygame.K_RIGHT:
-                    self.actions.remove(Action.RIGHT)
+                    self.actions.remove(CartBalancer.Action.RIGHT)
         return self.actions
 
 
@@ -80,9 +82,9 @@ class CartBalancer(Simulation):
         """
 
         force = 0
-        if Action.LEFT in actions and self.left_bound_collision is False:
+        if CartBalancer.Action.LEFT in actions and self.left_bound_collision is False:
             force -= self.force_mag
-        elif Action.RIGHT in actions and self.right_bound_collision is False:
+        elif CartBalancer.Action.RIGHT in actions and self.right_bound_collision is False:
             force += self.force_mag
 
         self.left_bound_collision = False
@@ -141,9 +143,6 @@ class CartBalancer(Simulation):
         :param pygame.Surface: The Pygame surface to render on.
         """
 
-        # Clear the screen
-        surface.fill((255, 255, 255))
-
         # Get screen dimensions
         width = surface.get_width()
         height = surface.get_height()
@@ -196,10 +195,10 @@ class CartBalancer(Simulation):
             """
             https://www.desmos.com/calculator/kf1c5i7pes
             """
-            return (-(x ** 2) + 1) * k
+            return (-(x ** 2) + 1) * k if (-1. <= x <= 1.) else 0
 
         cart_position, cart_velocity, pole_angle, pole_angular_velocity = self.state(normalized=True)
-        return formulae(pole_angle, self.max_score_per_second * delta_t)
+        return formulae(pole_angle, self.max_score_per_second * delta_t) * formulae(cart_position, self.max_score_per_second * delta_t)
 
     def score(self) -> float:
         """

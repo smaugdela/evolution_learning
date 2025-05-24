@@ -3,10 +3,9 @@ from typing import Optional
 import numpy as np
 import pygame
 from argparse import ArgumentParser
-from icecream import ic
 
 from base_classes.simulation import Simulation
-from cart_balancing import CartBalancer, Action
+from cart_balancing import CartBalancer
 from base_classes.ann import ANN
 from evolution_logic import fit_evolutionary_model
 
@@ -29,6 +28,9 @@ def interactive_mode(simulation: Simulation, model: Optional[ANN] = None):
     simulation_duration = 0.0
     while running:
 
+        ### Clear the screen
+        screen.fill((255, 255, 255))  # Fill the screen with white
+
         ### Handle events
         events = pygame.event.get()
 
@@ -47,18 +49,17 @@ def interactive_mode(simulation: Simulation, model: Optional[ANN] = None):
         if model:
             # Get the state of the simulation
             normalized_state = simulation.state(normalized=True)
-            # Get the action from the model
-            outputs = model.compute_outputs(np.array(normalized_state))
+
+            # Get the action from the model and render it on the screen
+            subsurface = screen.subsurface((width - 300, 0, 300, 300))
+            outputs = model.render_ann_on_surface(subsurface, inputs=normalized_state, show_weights=True).numpy(force=True)
+
+            # outputs = model.forward(np.array(normalized_state).reshape(1, -1)).numpy(force=True)
             # Convert the action to a valid action
-            model_action = Action(outputs.argmax())
+            model_action = simulation.Action(outputs.argmax())
 
             actions = [*actions, model_action]
-            # actions.append(model_action)
 
-            # ic(outputs)
-        #     ic(model_action.name)
-
-        # ic(actions)
 
         ### Update the simulation
         delta_t = clock.tick(framerate) / 1000.0  # Convert milliseconds to seconds
@@ -67,8 +68,6 @@ def interactive_mode(simulation: Simulation, model: Optional[ANN] = None):
 
         # Render the simulation
         simulation.render(screen)
-
-        # ic(simulation.state())
 
         ### Text rendering
         font = pygame.font.Font(None, 30)
@@ -110,7 +109,7 @@ def training_mode(simulation: Simulation):
     framerate = 60
     simulation_duration = 10.0  # seconds
     input_size = len(simulation.state())  # Number of state variables
-    output_size = len(Action)  # Number of actions
+    output_size = len(simulation.Action)  # Number of actions
 
     # Run the evolutionary model
     top_individuals = fit_evolutionary_model(
@@ -119,9 +118,9 @@ def training_mode(simulation: Simulation):
         output_size=output_size,
         framerate=framerate,
         simulation_duration=simulation_duration,
-        population_size=100,
+        population_size=150,
         num_generations=100,
-        selection_rate=0.5,
+        selection_rate=0.2,
         mutation_rate=0.1,
         return_top_n=1,
     )
@@ -129,7 +128,7 @@ def training_mode(simulation: Simulation):
     # Save the top individual locally
     os.makedirs("top_models", exist_ok=True)
     for ann, score in top_individuals:
-        ann.save_model(f"top_models/best_model_{score:.0f}.pkl")
+        ann.save_model(f"top_models/final_model_{score:.0f}.pkl")
 
     print("Top individuals saved.")
 

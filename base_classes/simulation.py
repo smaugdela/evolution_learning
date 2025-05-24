@@ -1,10 +1,14 @@
 # This is the file in which the artificial environment parent class is implemented.
 
+from enum import Enum
 from typing import List, Tuple
 import pygame
 
 
 class Simulation:
+
+    class Action(Enum):
+        NONE = 0
 
     def __init__(self):
         pass
