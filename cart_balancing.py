@@ -198,7 +198,7 @@ class CartBalancer(Simulation):
             return (-(x ** 2) + 1) * k if (-1. <= x <= 1.) else 0
 
         cart_position, cart_velocity, pole_angle, pole_angular_velocity = self.state(normalized=True)
-        return formulae(pole_angle, self.max_score_per_second * delta_t) * formulae(cart_position, self.max_score_per_second * delta_t)
+        return 10 * formulae(pole_angle, self.max_score_per_second * delta_t) + formulae(cart_position, self.max_score_per_second * delta_t)
 
     def score(self) -> float:
         """
