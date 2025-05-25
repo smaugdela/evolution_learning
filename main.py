@@ -55,11 +55,12 @@ def interactive_mode(simulation: Simulation, model: Optional[ANN] = None):
             outputs = model.render_ann_on_surface(subsurface, inputs=normalized_state, show_weights=True).numpy(force=True)
 
             # outputs = model.forward(np.array(normalized_state).reshape(1, -1)).numpy(force=True)
-            # Convert the action to a valid action
+            # Convert the output to a valid action
             model_action = simulation.Action(outputs.argmax())
 
-            actions = [*actions, model_action]
-
+            # User input has the priority over the model's
+            if not actions:
+                actions = [*actions, model_action]
 
         ### Update the simulation
         delta_t = clock.tick(framerate) / 1000.0  # Convert milliseconds to seconds
@@ -106,8 +107,8 @@ def training_mode(simulation: Simulation):
     Run the simulation in training mode.
     """
     # Set up the simulation parameters
-    framerate = 60
-    simulation_duration = 10.0  # seconds
+    framerate = 30
+    simulation_duration = 20.0  # seconds
     input_size = len(simulation.state())  # Number of state variables
     output_size = len(simulation.Action)  # Number of actions
 
@@ -119,9 +120,9 @@ def training_mode(simulation: Simulation):
         framerate=framerate,
         simulation_duration=simulation_duration,
         population_size=200,
-        num_generations=400,
-        selection_rate=0.2,
-        mutation_rate=0.1,
+        num_generations=500,
+        selection_rate=0.1,
+        mutation_rate=0.2,
         return_top_n=1,
     )
 
